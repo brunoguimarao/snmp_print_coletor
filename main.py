@@ -1,16 +1,18 @@
 import os
 import datetime
-from pysnmp.hlapi import *
+from coleta_impressao.monocromatica import coletar_impressao_monocromatica
+from coleta_impressao.colorida import coletar_impressao_colorida
+from coleta_impressao.toner_preto import verificar_toner_preto
+from coleta_impressao.toner_colorido import verificar_toner_colorido
+from coleta_impressao.manutencao import verificar_kit_manutencao
+#from utils import formatar_data_hora
 
 # Define uma lista de endereços IP da impressora e as credenciais SNMP
 ips = ['10.44.74.37', '10.44.74.28', '10.44.74.26', '10.44.74.30', '10.44.74.32', '10.44.74.38', '10.44.74.45']
 comunidade = 'public'
 
-# Define o OID para o contador de páginas
-oid_monocromatica = '1.3.6.1.2.1.43.10.2.1.4.1.1'
-
 # Obtém a data e hora atual
-data_atual = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+data_atual = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
 
 # Define o nome do arquivo de texto
 nome_arquivo = f'resultado_{data_atual}.txt'
@@ -18,25 +20,35 @@ nome_arquivo = f'resultado_{data_atual}.txt'
 # Abre o arquivo de texto para escrita
 arquivo = open(nome_arquivo, "w")
 
-# Loop através dos endereços IP e obter o número de páginas impressas de cada impressora
+# Loop através dos endereços IP e obter as informações de cada impressora
 for ip in ips:
-    # Cria uma sessão SNMP com a impressora para o contador de páginas
-    iterator = getCmd(SnmpEngine(),
-                      CommunityData(comunidade),
-                      UdpTransportTarget((ip, 161)),
-                      ContextData(),
-                      ObjectType(ObjectIdentity(oid_monocromatica)))
+    # Coleta informações de impressões monocromáticas
+    paginas_monocromaticas = coletar_impressao_monocromatica(ip, comunidade)
 
-    # Obtém o valor do contador de páginas
-    errorIndication, errorStatus, errorIndex, varBinds = next(iterator)
-    if errorIndication:
-        resultado = f'Impressora {ip}: Erro ao obter o contador de páginas: {errorIndication}'
-    else:
-        for varBind in varBinds:
-            resultado = f'Impressora {ip}: Número de páginas impressas: {varBind[1]}'
+    # Coleta informações de impressões coloridas
+    paginas_coloridas = coletar_impressao_colorida(ip, comunidade)
 
-    # Escreve o resultado no arquivo de texto
+    # Verifica a porcentagem do toner preto
+    porcentagem_toner_preto = verificar_toner_preto(ip, comunidade)
+
+    # Verifica a porcentagem dos toners coloridos, se a impressora possuir toners coloridos
+    porcentagem_toner_colorido = verificar_toner_colorido(ip, comunidade)
+
+    # Verifica a porcentagem do kit de manutenção
+    porcentagem_kit_manutencao = verificar_kit_manutencao(ip, comunidade)
+
+    # Escreve as informações no arquivo de texto
+    resultado = f'Impressora {ip}: Número de páginas impressas monocromáticas: {paginas_monocromaticas} | Número de páginas impressas coloridas: {paginas_coloridas} | Porcentagem do toner preto: {porcentagem_toner_preto}%'
+
+    if porcentagem_toner_colorido is not None:
+        resultado += f' | Porcentagem do toner colorido: {porcentagem_toner_colorido}%'
+
+    resultado += f' | Porcentagem do kit de manutenção: {porcentagem_kit_manutencao}%'
+
     arquivo.write(resultado + '\n')
 
 # Fecha o arquivo de texto
 arquivo.close()
+
+# Renomeia o arquivo para a data atual
+os.rename(nome_arquivo, f'resultado_{data_atual}.txt')

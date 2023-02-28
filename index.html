@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Resultados da coleta de informações das impressoras</title>
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th, td {
+        text-align: left;
+        padding: 8px;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Resultados da coleta de informações das impressoras</h1>
+    <form>
+      <label for="resultado">Escolha o arquivo "resultado.txt" desejado:</label>
+      <select name="resultado" id="resultado">
+        <!-- Opções serão adicionadas dinamicamente com JavaScript -->
+      </select>
+      <button type="submit">Exibir</button>
+    </form>
+    <button onclick="executarNovamente()">Executar novamente</button>
+    <table>
+      <thead>
+        <tr>
+          <th>Impressora</th>
+          <th>Páginas impressas monocromáticas</th>
+          <th>Porcentagem do toner preto</th>
+          <th>Porcentagem do toner ciano</th>
+          <th>Porcentagem do toner magenta</th>
+          <th>Porcentagem do toner amarelo</th>
+          <th>Porcentagem do kit de manutenção</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Aqui serão inseridos os dados das impressoras -->
+      </tbody>
+    </table>
+    <script>
+      // Obtém o elemento select do arquivo "resultado.txt"
+      const selectResultado = document.getElementById('resultado');
+
+      // Adiciona as opções ao elemento select com base nos arquivos "resultado*.txt" na pasta
+      fetch('/api/resultado')
+        .then(response => response.json())
+        .then(data => {
+          for (const arquivo of data) {
+            const option = document.createElement('option');
+            option.value = arquivo.nome;
+            option.text = arquivo.nome;
+            selectResultado.add(option);
+          }
+        });
+
+      // Submete o formulário ao selecionar um arquivo
+      selectResultado.addEventListener('change', () => {
+        const form = document.querySelector('form');
+        form.action = `/resultado/${selectResultado.value}`;
+        form.submit();
+      });
+
+      // Função para executar novamente o script "main.py"
+      function executarNovamente() {
+        fetch('/api/executar')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Erro ao executar o script "main.py"');
+            }
+            return response.text();
+          })
+          .then(alert)
+          .catch(alert);
+      }
+    </script>
+  </body>
+</html>
